@@ -15,6 +15,8 @@ from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.utils import BaseOutput, deprecate
 from diffusers.schedulers.scheduling_utils import SchedulerMixin
 
+import devicetorch
+device = devicetorch.get(torch)
 
 
 def betas_for_alpha_bar(num_diffusion_timesteps, max_beta=0.999) -> torch.Tensor:
@@ -32,7 +34,7 @@ def betas_for_alpha_bar(num_diffusion_timesteps, max_beta=0.999) -> torch.Tensor
 
 def DDIM_efficient_feed_forward(latent, model, ddim_scheduler):
     for i, t in enumerate(tqdm1(ddim_scheduler.timesteps)):
-        t1 = (torch.ones(1) * t) .cuda()#.to(x_t.device)
+        t1 = (torch.ones(1) * t).to(device)
         with torch.no_grad():      
             if i == 0:                
                 noise_pred = model(latent, t1)   

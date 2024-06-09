@@ -8,6 +8,8 @@ from math import log10, sqrt
 import sys
 sys.path.insert(0,'./')
 from guided_diffusion.models import Model
+import devicetorch
+device = devicetorch.get(torch)
 
 def ensure_reproducibility(seed):
     torch.backends.cudnn.benchmark = False
@@ -203,11 +205,11 @@ def generate_lr_image(path, downsampling_ratio, speckle_coef=0.8, speckle_lambda
     init_image = Image.open(path).resize((256, 256))
     img_np = np.array(init_image).astype(np.float32) / 255 * 2 - 1
     img = torch.tensor(img_np).permute(2,0,1).unsqueeze(0)
-    downsampling_op = torch.nn.AdaptiveAvgPool2d((256//downsampling_ratio,256//downsampling_ratio)).cuda() 
+    downsampling_op = torch.nn.AdaptiveAvgPool2d((256//downsampling_ratio,256//downsampling_ratio)).to(device)
     for param in downsampling_op.parameters():
         param.requires_grad = False
     #b, c, h, w = img.shape
-    downsampled = downsampling_op(img.cuda())
+    downsampled = downsampling_op(img.to(device))
     downsampled_resc1 = (downsampled + 1.) / 2.
     gauss = torch.randn_like(downsampled) * speckle_lambda
 
@@ -234,8 +236,8 @@ def generate_blurry_image(path='imgs/00205.png', kernel_size=41, speckle_coef=0.
 
     pil_image = Image.open(path).resize((256, 256))
     img_np = np.array(pil_image).astype(np.float32) / 255 * 2 - 1
-    img = torch.tensor(img_np).permute(2,0,1).unsqueeze(0).cuda()
-    conv = get_conv(kernel_size).cuda()
+    img = torch.tensor(img_np).permute(2,0,1).unsqueeze(0).to(device)
+    conv = get_conv(kernel_size).to(device)
 
     for param in conv.parameters():
         param.requires_grad = False
@@ -304,7 +306,8 @@ def fcn(num_input_channels=200, num_output_channels=1, num_hidden=1000):
 def load_pretrained_diffusion_model(config):
     model = Model(config)
     ckpt = "checkpoints/celeba_hq.ckpt"
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+#    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = devicetorch.get(torch)
     config.device = device
     model.load_state_dict(torch.load(ckpt, map_location=device))
     model.to(device)

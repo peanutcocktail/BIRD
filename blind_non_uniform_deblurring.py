@@ -10,6 +10,8 @@ from guided_diffusion.models import Model
 import random
 from ddim_inversion_utils import *
 from utils import *
+import devicetorch
+device = devicetorch.get(torch)
 
 with open('configs/blind_non_uniform_deblurring.yml', 'r') as f:
     task_config = yaml.safe_load(f)
@@ -33,7 +35,7 @@ ddim_scheduler.set_timesteps(config.diffusion.num_diffusion_timesteps // task_co
 img_np = (np.array(Image.open('data/motion_blur/00870_input.png')) / 255.)*2. - 1.
 img_pil = Image.open('data/motion_blur/00870_gt.png')
 img_torch = torch.tensor(img_np).permute(2, 0, 1).unsqueeze(0).float()
-radii =  torch.ones([1, 1, 1]).cuda() * (np.sqrt(config.data.image_size*config.data.image_size*config.model.in_channels))
+radii =  torch.ones([1, 1, 1]).to(device) * (np.sqrt(config.data.image_size*config.data.image_size*config.model.in_channels))
 
 latent = torch.nn.parameter.Parameter(torch.randn( 1, config.model.in_channels, config.data.image_size, config.data.image_size).to(device))  
 l2_loss=nn.MSELoss() #nn.L1Loss()
@@ -43,7 +45,7 @@ optimizer = torch.optim.Adam([{'params':latent,'lr':task_config['lr']}])#
 for iteration in range(task_config['Optimization_steps']):
     optimizer.zero_grad()
     x_0_hat = DDIM_efficient_feed_forward(latent, model, ddim_scheduler)    
-    loss = l2_loss(x_0_hat, img_torch.cuda())
+    loss = l2_loss(x_0_hat, img_torch.to(device))
     loss.backward()  
     optimizer.step()  
 
@@ -55,7 +57,7 @@ for iteration in range(task_config['Optimization_steps']):
     if iteration % 10 == 0:
         #psnr = psnr_orig(np.array(img_pil).astype(np.float32), process(x_0_hat, 0))
         #print(iteration, 'loss:', loss.item(), torch.norm(latent.detach()), psnr)
-        Image.fromarray(np.concatenate([ process(img_torch.cuda(), 0), process(x_0_hat, 0), np.array(img_pil).astype(np.uint8)], 1)).save('results/non_uniform_deblurring.png')
+        Image.fromarray(np.concatenate([ process(img_torch.to(device), 0), process(x_0_hat, 0), np.array(img_pil).astype(np.uint8)], 1)).save('results/non_uniform_deblurring.png')
 
    
 

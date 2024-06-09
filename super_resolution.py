@@ -10,6 +10,8 @@ from guided_diffusion.models import Model
 import random
 from ddim_inversion_utils import *
 from utils import *
+import devicetorch
+device = devicetorch.get(torch)
 
 with open('configs/super_resolution.yml', 'r') as f:
     task_config = yaml.safe_load(f)
@@ -30,7 +32,7 @@ ddim_scheduler=DDIMScheduler(beta_start=config.diffusion.beta_start, beta_end=co
 ddim_scheduler.set_timesteps(config.diffusion.num_diffusion_timesteps // task_config['delta_t'])#task_config['Denoising_steps']
 
 img_pil, downsampled_torch, downsampling_op = generate_lr_image('data/imgs/00205.png', task_config['downsampling_ratio'])
-radii =  torch.ones([1, 1, 1]).cuda() * (np.sqrt(config.data.image_size*config.data.image_size*config.model.in_channels))
+radii =  torch.ones([1, 1, 1]).to(device) * (np.sqrt(config.data.image_size*config.data.image_size*config.model.in_channels))
 
 latent = torch.nn.parameter.Parameter(torch.randn( 1, config.model.in_channels, config.data.image_size, config.data.image_size).to(device))  
 l2_loss=nn.MSELoss() #nn.L1Loss()

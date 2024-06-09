@@ -10,6 +10,8 @@ from guided_diffusion.models import Model
 import random
 from ddim_inversion_utils import *
 from utils import *
+import devicetorch
+device = devicetorch.get(torch)
 
 with open('configs/blind_deblurring.yml', 'r') as f:
     task_config = yaml.safe_load(f)
@@ -31,13 +33,13 @@ ddim_scheduler.set_timesteps(config.diffusion.num_diffusion_timesteps // task_co
 
 #scale=41
 l2_loss= nn.MSELoss() #nn.L1Loss() 
-net_kernel = fcn(200, task_config['kernel_size'] * task_config['kernel_size']).cuda()
-net_input_kernel = get_noise(200, 'noise', (1, 1)).cuda()
+net_kernel = fcn(200, task_config['kernel_size'] * task_config['kernel_size']).to(device)
+net_input_kernel = get_noise(200, 'noise', (1, 1)).to(device)
 net_input_kernel.squeeze_()
 
 
 img_pil, downsampled_torch = generate_blurry_image('data/imgs/00287.png')
-radii =  torch.ones([1, 1, 1]).cuda() * (np.sqrt(256*256*3))
+radii =  torch.ones([1, 1, 1]).to(device) * (np.sqrt(256*256*3))
 
 latent = torch.nn.parameter.Parameter(torch.randn( 1, config.model.in_channels, config.data.image_size, config.data.image_size).to(device))  
 optimizer = torch.optim.Adam([{'params':latent,'lr':task_config['lr_img']}, {'params':net_kernel.parameters(),'lr':task_config['lr_blur']}])
